@@ -8,7 +8,6 @@
 </head>
 <body class="light">
 
-
   <!-- App -->
   <div id="app" hidden>
     <div class="app-wrap">
@@ -28,7 +27,9 @@
         <p id="intro">Semester 2, 2025 notes, search below to filter files.</p>
         <h2 id="course-title"></h2>
         <input type="text" id="search" placeholder="Search files... (filters filenames)">
-        <div id="pdfs" class="group"></div>
+        <div id="pdfs" class="group">
+          <p class="empty" id="loading">Loading files…</p>
+        </div>
       </div>
     </div>
   </div>
@@ -46,7 +47,6 @@
       if (["doc","docx"].includes(ext)) return "icons/Word.png";
       if (["ppt","pptx"].includes(ext)) return "icons/ppt.png";
       if (["txt"].includes(ext)) return "icons/Txt.png";
-      // if (["png"].includes(ext)) return "icons/png.png"
       return "";
     }
 
@@ -59,7 +59,9 @@
     const subjectList = document.getElementById("subject-list");
     const toggleBtn = document.getElementById("toggle-dark");
     const courseTitleEl = document.getElementById("course-title");
+    const appRoot = document.getElementById("app");
 
+    // Theme
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") {
       document.body.classList.replace("light", "dark");
@@ -71,6 +73,7 @@
       localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
     });
 
+    // Subject switching
     subjectList.addEventListener("click", (e) => {
       const link = e.target.closest("a[data-subject]");
       if (!link) return;
@@ -83,23 +86,32 @@
       render();
     });
 
+    // Search
     searchInput.addEventListener("input", () => {
       query = searchInput.value.trim().toLowerCase();
       render();
     });
 
+    // Load data then show app
     fetch(PJSON_URL)
-      .then(r => r.json())
-      .then(json => { data = json; render(); })
+      .then(r => {
+        if (!r.ok) throw new Error("Network error");
+        return r.json();
+      })
+      .then(json => {
+        data = json;
+        appRoot.hidden = false;              // ✅ show app on success
+        render();
+      })
       .catch(() => {
-        pdfContainer.innerHTML = `<p class="empty">Couldn’t load <code>${PJSON_URL}</code>. Make sure it’s in the repo root.</p>`;
+        appRoot.hidden = false;              // ✅ still show app, but with message
+        pdfContainer.innerHTML = `<p class="empty">Couldn’t load <code>${PJSON_URL}</code>. Make sure it’s next to <code>index.html</code> and served over HTTP.</p>`;
       });
 
     /* -------------------------
        CIVL6415 extra links box
        ------------------------- */
     function buildCIVL6415Extras() {
-      // container
       const extras = document.createElement("div");
       extras.style.marginTop = "16px";
       extras.style.padding = "12px 16px";
@@ -120,10 +132,9 @@
       ul.style.padding = "0";
 
       const links = [
-        // 🔁 Replace these URLs/titles with your real links
-        { href: "https://docs.aimsun.com/next/22.0.1/Tutorials/0_Index/TutorialsIndex.html", text: "🌐 Aimsun Offical tutorial / reference" },
+        { href: "https://docs.aimsun.com/next/22.0.1/Tutorials/0_Index/TutorialsIndex.html", text: "🌐 Aimsun Official tutorial / reference" },
         { href: "https://www.youtube.com/watch?v=QMDQFTUAHdE&list=PLzpLQCnXvcIuGGBZhzPD7bLrHZxS6WSAc&pp=0gcJCWUEOCosWNin", text: "🎥 Aimsun Tutorial" },
-        { href: "https://example.com/civl6415-reading", text: "📘 Additional reading" },
+        { href: "https://example.com/civl6415-reading", text: "📘 Additional reading" }
       ];
 
       links.forEach(l => {
@@ -148,6 +159,7 @@
     }
 
     function render() {
+      if (!pdfContainer) return;
       pdfContainer.innerHTML = "";
 
       if (currentSubject !== "ALL") {
@@ -202,7 +214,6 @@
           }
           wrap.appendChild(list);
 
-          // ⬇️ Add CIVL6415 extras ONLY for that subject
           if (subject === "CIVL6415") {
             wrap.appendChild(buildCIVL6415Extras());
           }
@@ -215,7 +226,6 @@
         pdfContainer.innerHTML = `<p class="empty">No files match your filter${currentSubject === "ALL" ? "" : ` in <strong>${currentSubject}</strong>`}.</p>`;
       }
     }
-
   </script>
 </body>
 </html>
